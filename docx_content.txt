@@ -1,0 +1,77 @@
+FEDERATED LEARNING FOR PRIVACY-PRESERVING
+DISTRIBUTED SOLAR POWER FORECASTING
+Idea Behind the Project and System Overview
+1. Idea Behind the Project
+The idea behind “Federated Learning for Privacy-Preserving Distributed Solar Power Forecasting” is to allow multiple solar power sites to work together to build a better solar forecasting model without sending their raw data to a central server.
+Normally, when several solar sites want to build one powerful forecasting model, their data would be collected and stored in a central location. This approach can create privacy, security, data ownership, and communication concerns. Federated Learning provides an alternative approach in which each solar site keeps its data locally, trains a model using its own data, and sends only model updates to a central or cloud server.
+The server combines the updates from the participating sites using an aggregation algorithm such as Federated Averaging (FedAvg) and produces an improved global model. The global model can then be returned to the sites for another round of local training.
+2. Simple Example
+Assume that five solar farms are participating in the system. Each solar farm represents a federated client. The sites retain their raw solar and weather data locally.
+Solar Site 1 → Model Update → Federated Server
+Solar Site 2 → Model Update → Federated Server
+Solar Site 3 → Model Update → Federated Server
+Solar Site 4 → Model Update → Federated Server
+Solar Site 5 → Model Update → Federated Server
+The federated server aggregates the model updates and creates a global forecasting model. Raw training records are not required to be transferred to the server.
+3. System Overview
+The proposed system will use historical solar-power and weather-related data from multiple PV sites. Each site is treated as a separate federated client.
+1. Data Collection
+Data are obtained from multiple distributed PV sites, such as PVDAQ sites.
+2. Data Preprocessing
+The system cleans the data, handles missing values, normalizes variables, and prepares time-series sequences.
+3. Local Model Training
+Each solar site trains a deep-learning forecasting model, such as an LSTM, using its own local data.
+4. Model Update
+Instead of sending raw data, each site sends its trained model parameters or updates to the federated server.
+5. Federated Aggregation
+The server combines the model updates from the different sites using Federated Averaging (FedAvg).
+6. Global Model
+The aggregated model becomes the improved global solar forecasting model.
+7. Repeated Training
+The global model is sent back to the participating sites and the local training and aggregation process is repeated for several rounds.
+8. Solar Forecasting
+The final global model is used to predict future solar power generation.
+9. Evaluation
+The system evaluates forecasting performance using forecast-error metrics and communication cost.
+4. Centralized versus Federated Approach
+Centralized approach: All participating solar sites send their raw data to a central database, where one model is trained.
+Federated approach: Each site keeps its raw data locally, trains the model locally, and communicates model updates to the federated server.
+5. Importance of the Project
+Solar power generation is highly variable because it is affected by solar irradiance, cloud conditions, temperature, and other weather conditions. Accurate solar forecasting can support energy planning, renewable-energy management, and grid operations.
+However, collecting data from many solar sites into one central database can create privacy and data-sharing concerns. This project investigates whether Federated Learning can provide accurate solar forecasting while keeping participating sites' raw data local.
+6. Main Research Statement
+The project investigates how multiple distributed solar sites can collaboratively train a solar-power forecasting model using Federated Learning without sharing their raw data.
+7. Main Research Question
+Can Federated Learning provide accurate distributed solar-power forecasting while reducing the need to centrally share raw data?
+8. Evaluation Metrics
+Forecast Accuracy:
+Mean Absolute Error (MAE)
+Root Mean Square Error (RMSE)
+Mean Absolute Percentage Error (MAPE)
+R² (coefficient of determination)
+Communication Cost:
+Number of federated communication rounds
+Size/amount of model updates exchanged
+Total communication during training
+9. Overall System Flow
+Multiple PV Sites
+↓
+Local Solar/Weather Data
+↓
+Data Preprocessing
+↓
+Local LSTM Training at Each Site
+↓
+Model Updates (Raw Data Remains Local)
+↓
+Cloud/Federated Server
+↓
+Federated Averaging (FedAvg)
+↓
+Global Forecasting Model
+↓
+Solar Power Forecast
+↓
+Accuracy and Communication-Cost Evaluation
+10. Summary
+The proposed project uses Federated Learning to enable multiple distributed solar sites to collaboratively develop a solar-power forecasting model without requiring the sites to share their raw data. Deep learning, particularly an LSTM-based model, is used for forecasting, while Federated Averaging is used to combine the knowledge learned by the individual sites. The research will determine the effectiveness of this approach by measuring both forecasting error and communication cost.

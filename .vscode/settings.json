@@ -1,0 +1,6 @@
+{
+  "python.defaultInterpreterPath": "/home/daniel/Documents/workspace/fedrated-learning/backend/venv/bin/python",
+  "python.analysis.extraPaths": [
+    "/home/daniel/Documents/workspace/fedrated-learning/backend/venv/lib/python3.12/site-packages"
+  ]
+}

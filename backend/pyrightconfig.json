@@ -1,0 +1,8 @@
+{
+  "venvPath": "/home/daniel/Documents/workspace/fedrated-learning/backend",
+  "venv": "venv",
+  "extraPaths": [
+    "/home/daniel/Documents/workspace/fedrated-learning/backend",
+    "/home/daniel/Documents/workspace/fedrated-learning/backend/venv/lib/python3.12/site-packages"
+  ]
+}
