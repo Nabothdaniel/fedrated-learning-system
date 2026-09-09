@@ -195,7 +195,7 @@ def run_simulation(req: SimRequest):
         avg_fl_mae=float(avg_fl_mae),
         avg_cent_mae=float(avg_cent_mae),
         avg_fl_r2=float(avg_fl_r2),
-        cum_comm_mb=float(server.cum_comm_mb)
+        cum_comm_mb=server.cum_comm_mb
     )
 
     return {
@@ -204,7 +204,7 @@ def run_simulation(req: SimRequest):
             "avg_fl_mae": float(avg_fl_mae),
             "avg_cent_mae": float(avg_cent_mae),
             "avg_fl_r2": float(avg_fl_r2),
-            "cum_fl_comm_mb": float(server.cum_comm_mb),
+            "cum_fl_comm_mb": server.cum_comm_mb,
             "raw_data_size_mb": float(raw_data_bytes / (1024 ** 2))
         },
         "waveform_samples": waveform_samples,
@@ -302,7 +302,7 @@ async def _run_stream_logic(websocket: WebSocket):
             agg_weights, round_comm_mb = server.federated_averaging(client_updates)
             fl_round_losses.append(float(np.mean(round_client_losses)))
             
-            await websocket.send_json({"phase": "aggregating", "round": r + 1, "loss": fl_round_losses[-1], "payload_mb": float(server.cum_comm_mb)})
+            await websocket.send_json({"phase": "aggregating", "round": r + 1, "loss": fl_round_losses[-1], "payload_mb": server.cum_comm_mb})
             await asyncio.sleep(0.2)
 
         # Log completion to SQLite DB
@@ -312,10 +312,10 @@ async def _run_stream_logic(websocket: WebSocket):
             avg_fl_mae=float(fl_round_losses[-1]),
             avg_cent_mae=float(fl_round_losses[-1] * 1.1),
             avg_fl_r2=0.85,
-            cum_comm_mb=float(server.cum_comm_mb)
+            cum_comm_mb=server.cum_comm_mb
         )
 
-        await websocket.send_json({"phase": "completed", "loss": fl_round_losses[-1], "payload_mb": float(server.cum_comm_mb)})
+        await websocket.send_json({"phase": "completed", "loss": fl_round_losses[-1], "payload_mb": server.cum_comm_mb})
             
     except WebSocketDisconnect:
         print("Client disconnected from WebSocket.")

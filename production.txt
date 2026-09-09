@@ -1,0 +1,47 @@
+# Production Hosting Guide: Vercel & Render
+
+This guide outlines how to deploy the Federated Learning application using **Vercel** for the Next.js frontend and **Render** for the FastAPI backend.
+
+## 1. Backend Deployment (Render)
+
+Render is perfect for hosting Python/FastAPI web services.
+
+### Prerequisites
+A `requirements.txt` file is required by Render to install dependencies. I have automatically generated one for you inside the `backend` directory.
+
+### Steps to Deploy:
+1. Go to the [Render Dashboard](https://dashboard.render.com/) and click **New+** -> **Web Service**.
+2. Connect your GitHub/GitLab/Bitbucket repository.
+3. Configure the service with the following settings:
+   - **Name**: `fedrated-learning-api` (or your choice)
+   - **Root Directory**: `backend`
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn src.api:app --host 0.0.0.0 --port $PORT`
+4. Click **Create Web Service**. 
+5. Wait for the build to finish. Once live, Render will provide a URL like `https://fedrated-learning-api.onrender.com`. Save this URL for the frontend configuration.
+
+---
+
+## 2. Frontend Deployment (Vercel)
+
+Vercel provides native, zero-config support for Next.js applications.
+
+### Prerequisites
+Before deploying, make sure your Next.js app knows how to communicate with your backend. Usually, this is handled via an environment variable (e.g., `NEXT_PUBLIC_API_URL`). Ensure your frontend API calls use this variable rather than hardcoding `http://localhost:8000`.
+
+### Steps to Deploy:
+1. Go to the [Vercel Dashboard](https://vercel.com/dashboard) and click **Add New** -> **Project**.
+2. Import your GitHub/GitLab/Bitbucket repository.
+3. In the project configuration, edit the **Root Directory** and set it to: `frontend`.
+4. Vercel will automatically detect **Next.js** as the framework.
+5. Expand the **Environment Variables** section and add the URL of your Render backend:
+   - **Key**: `NEXT_PUBLIC_API_URL` (or whatever variable your frontend uses to make API requests)
+   - **Value**: `https://fedrated-learning-api.onrender.com` (use your actual Render URL here)
+6. Click **Deploy**.
+
+---
+
+## 3. Post-Deployment Checks
+- **CORS**: Ensure that your FastAPI backend on Render allows Cross-Origin requests (CORS) from your Vercel frontend URL. You may need to update the `CORSMiddleware` in `backend/src/api.py` to include your Vercel production URL (e.g., `https://your-frontend.vercel.app`).
+- **Cold Starts**: If you use Render's Free tier, note that the backend will spin down after 15 minutes of inactivity. This means the first API request might take ~30-60 seconds to respond as the service wakes up.

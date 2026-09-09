@@ -102,6 +102,30 @@ def get_config() -> Dict[str, Any]:
 def update_config(new_config: Dict[str, Any]) -> Dict[str, Any]:
     conn = get_db_connection()
     cursor = conn.cursor()
+    t_days = new_config.get("training_days")
+    if t_days is None:
+        t_days = new_config.get("sim_days")
+    if t_days is None:
+        t_days = 30
+
+    num_sites = new_config.get("num_sites")
+    if num_sites is None: num_sites = 5
+
+    fl_rounds = new_config.get("fl_rounds")
+    if fl_rounds is None: fl_rounds = 10
+
+    local_epochs = new_config.get("local_epochs")
+    if local_epochs is None: local_epochs = 2
+
+    seq_length = new_config.get("seq_length")
+    if seq_length is None: seq_length = 24
+
+    learning_rate = new_config.get("learning_rate")
+    if learning_rate is None: learning_rate = 0.001
+
+    aggregation_alg = new_config.get("aggregation_alg")
+    if aggregation_alg is None: aggregation_alg = "FedAvg"
+
     cursor.execute("""
     UPDATE system_config
     SET num_sites = ?,
@@ -114,13 +138,13 @@ def update_config(new_config: Dict[str, Any]) -> Dict[str, Any]:
         updated_at = CURRENT_TIMESTAMP
     WHERE id = 1
     """, (
-        int(new_config.get("num_sites", 5)),
-        int(new_config.get("training_days", new_config.get("sim_days", 30))),
-        int(new_config.get("fl_rounds", 10)),
-        int(new_config.get("local_epochs", 2)),
-        int(new_config.get("seq_length", 24)),
-        float(new_config.get("learning_rate", 0.001)),
-        str(new_config.get("aggregation_alg", "FedAvg"))
+        int(num_sites),
+        int(t_days),
+        int(fl_rounds),
+        int(local_epochs),
+        int(seq_length),
+        float(learning_rate),
+        str(aggregation_alg)
     ))
     conn.commit()
     conn.close()
