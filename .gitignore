@@ -1,2 +1,24 @@
-backend/venv/
-backend/__pycache__/
+# Environment files (never commit secret env files)
+.env
+.env.local
+.env.production
+.env.development
+.env*.local
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+.vercel
+
+# Python / Backend
+venv/
+__pycache__/
+*.pyc
+*.db
+data.db
+
+# Misc
+.DS_Store
+*.log

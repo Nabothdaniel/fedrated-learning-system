@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Sliders, Database, Save, RotateCcw, Cpu, Layers, Activity } from "lucide-react";
 import { toast } from "sonner";
+import { useConfig, useSaveConfig } from "@/hooks/useApi";
 
 interface ConfigModalProps {
   isOpen: boolean;
@@ -10,8 +11,9 @@ interface ConfigModalProps {
 }
 
 export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onSaveSuccess }) => {
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { data: configData, isLoading: loading } = useConfig();
+  const saveConfigMutation = useSaveConfig();
+
   const [form, setForm] = useState({
     num_sites: 5,
     training_days: 30,
@@ -23,57 +25,35 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onSav
   });
 
   useEffect(() => {
-    if (isOpen) {
-      setLoading(true);
-      fetch("http://localhost:8000/api/config")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === "success" && data.config) {
-            setForm({
-              num_sites: data.config.num_sites ?? 5,
-              training_days: data.config.training_days ?? data.config.sim_days ?? 30,
-              fl_rounds: data.config.fl_rounds ?? 10,
-              local_epochs: data.config.local_epochs ?? 2,
-              seq_length: data.config.seq_length ?? 24,
-              learning_rate: data.config.learning_rate ?? 0.001,
-              aggregation_alg: data.config.aggregation_alg ?? "FedAvg"
-            });
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to load config:", err);
-          toast.error("Could not fetch config from database.");
-        })
-        .finally(() => setLoading(false));
+    if (configData) {
+      setForm({
+        num_sites: configData.num_sites ?? 5,
+        training_days: configData.training_days ?? configData.sim_days ?? 30,
+        fl_rounds: configData.fl_rounds ?? 10,
+        local_epochs: configData.local_epochs ?? 2,
+        seq_length: configData.seq_length ?? 24,
+        learning_rate: configData.learning_rate ?? 0.001,
+        aggregation_alg: configData.aggregation_alg ?? "FedAvg"
+      });
     }
-  }, [isOpen]);
+  }, [configData]);
 
   if (!isOpen) return null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
 
-    try {
-      const res = await fetch("http://localhost:8000/api/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
-      const data = await res.json();
-      if (data.status === "success") {
+    saveConfigMutation.mutate(form, {
+      onSuccess: () => {
         toast.success("System configuration saved to database successfully!");
         if (onSaveSuccess) onSaveSuccess();
         onClose();
-      } else {
-        toast.error("Failed to update database configuration.");
+      },
+      onError: (err) => {
+        console.error("Error saving config:", err);
+        toast.error("Network error saving database config.");
       }
-    } catch (err) {
-      console.error("Error saving config:", err);
-      toast.error("Network error saving database config.");
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   const handleReset = () => {
@@ -88,6 +68,8 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, onSav
     });
     toast.info("Reset config to system defaults.");
   };
+
+  const saving = saveConfigMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">

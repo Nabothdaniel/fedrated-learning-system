@@ -3,8 +3,11 @@ import React, { useState, useEffect } from "react";
 import { AssetCard } from "@/components/ui/AssetCard";
 import { Badge } from "@/components/ui/Badge";
 import { BarChart, LineChart } from "lucide-react";
+import { useHistory } from "@/hooks/useApi";
 
 export default function EvaluationPage() {
+  const { data: historyData } = useHistory();
+
   const [metrics, setMetrics] = useState({
     avg_fl_mae: 2.45,
     avg_cent_mae: 2.89,
@@ -16,23 +19,20 @@ export default function EvaluationPage() {
   });
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/history")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success" && data.history && data.history.length > 0) {
-          const lastRun = data.history[0];
-          setMetrics((prev) => ({
-            ...prev,
-            avg_fl_mae: lastRun.avg_fl_mae ?? 2.45,
-            avg_cent_mae: lastRun.avg_cent_mae ?? 2.89,
-            avg_fl_r2: lastRun.avg_fl_r2 ?? 0.824,
-            comm_rounds: lastRun.fl_rounds ?? 10,
-            payload_size_mb: lastRun.cum_comm_mb ? parseFloat((lastRun.cum_comm_mb / (lastRun.num_sites * lastRun.fl_rounds)).toFixed(2)) : 2.4
-          }));
-        }
-      })
-      .catch((err) => console.error("Error fetching history from DB:", err));
-  }, []);
+    if (historyData && historyData.length > 0) {
+      const lastRun = historyData[0];
+      setMetrics((prev) => ({
+        ...prev,
+        avg_fl_mae: lastRun.avg_fl_mae ?? 2.45,
+        avg_cent_mae: lastRun.avg_cent_mae ?? 2.89,
+        avg_fl_r2: lastRun.avg_fl_r2 ?? 0.824,
+        comm_rounds: lastRun.fl_rounds ?? 10,
+        payload_size_mb: lastRun.cum_comm_mb
+          ? parseFloat((lastRun.cum_comm_mb / (lastRun.num_sites * lastRun.fl_rounds)).toFixed(2))
+          : 2.4,
+      }));
+    }
+  }, [historyData]);
 
   const baselineMAETrend = [35, 33, 34, 30, 32, 28, 26, 27, 24, 22, 23, 19, 18, 20, 16, 14, 15];
   const federatedMAETrend = [35, 32, 30, 28, 25, 24, 22, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10]; 

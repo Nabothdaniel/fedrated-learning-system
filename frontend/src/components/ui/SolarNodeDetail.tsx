@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "./Button";
 import { WaveformChart } from "./WaveformChart";
 import { ExternalLink, Link2, Share2, Clock, Activity, ArrowDownRight, SlidersHorizontal, RefreshCw, Plus } from "lucide-react";
 import { ConfigModal } from "./ConfigModal";
+import { useNodes } from "@/hooks/useApi";
 
 export const SolarNodeDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState("metrics");
@@ -13,27 +14,21 @@ export const SolarNodeDetail: React.FC = () => {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "site_0";
 
-  const [nodesMap, setNodesMap] = useState<Record<string, any> | null>(null);
+  const { data: nodesList, isLoading: loadingNodes, refetch: refetchNodes } = useNodes();
 
-  useEffect(() => {
-    fetch("http://localhost:8000/api/nodes")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success") {
-          const map: Record<string, any> = {};
-          data.nodes.forEach((n: any) => { map[n.id] = n; });
-          setNodesMap(map);
-        }
-      })
-      .catch((err) => console.error("Error fetching nodes:", err));
-  }, []);
+  const nodesMap = useMemo(() => {
+    if (!nodesList) return null;
+    const map: Record<string, any> = {};
+    nodesList.forEach((n: any) => { map[n.id] = n; });
+    return map;
+  }, [nodesList]);
 
-  if (!nodesMap) {
+  if (loadingNodes || !nodesMap) {
     return (
       <div className="bg-[#11121A] border border-[#1E202E] rounded-2xl p-6 relative overflow-hidden flex items-center justify-center min-h-[500px]">
         <div className="flex flex-col items-center gap-3 text-slate-400">
-          <Activity className="w-6 h-6 animate-pulse" />
-          <p className="text-xs font-semibold animate-pulse tracking-tight">Establishing secure link to edge PV datasets...</p>
+          <Activity className="w-6 h-6 animate-pulse text-purple-400" />
+          <p className="text-xs font-semibold animate-pulse tracking-tight">Establishing secure link to edge PV datasets via TanStack Query...</p>
         </div>
       </div>
     );
@@ -49,7 +44,7 @@ export const SolarNodeDetail: React.FC = () => {
         <div className="flex items-center justify-between pb-4 border-b border-[#1E202E]/60 mb-6">
           <h3 className="text-sm font-bold text-slate-200 tracking-tight">Solar Node Detail Viewer</h3>
           <div className="flex items-center gap-2">
-            <button onClick={() => toast.success('Refreshing node data stream...')} className="p-1.5 rounded-lg bg-[#181A26] text-slate-400 hover:text-white border border-[#272A3C] transition-colors" title="Refresh Node Data">
+            <button onClick={() => { refetchNodes(); toast.success('Refreshing node data stream...'); }} className="p-1.5 rounded-lg bg-[#181A26] text-slate-400 hover:text-white border border-[#272A3C] transition-colors" title="Refresh Node Data">
               <RefreshCw className="w-4 h-4" />
             </button>
             <button onClick={() => setConfigOpen(true)} className="p-1.5 rounded-lg bg-[#181A26] text-slate-400 hover:text-white border border-[#272A3C] transition-colors" title="Open Admin DB Config">

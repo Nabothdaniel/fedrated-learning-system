@@ -4,11 +4,17 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Zap, Server, Network, Check, Loader2, Circle, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { useConfig, useRunPipeline } from "@/hooks/useApi";
+import { getWsBaseUrl } from "@/lib/api";
 
 export default function GlobalModelPage() {
   const [loading, setLoading] = useState(false);
   const [round, setRound] = useState(0);
   const [phase, setPhase] = useState(0);
+
+  const { data: configData } = useConfig();
+  const runPipelineMutation = useRunPipeline();
+
   const [config, setConfig] = useState({
     num_sites: 5,
     fl_rounds: 10,
@@ -20,15 +26,66 @@ export default function GlobalModelPage() {
   });
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/config")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success" && data.config) {
-          setConfig(data.config);
-        }
-      })
-      .catch((err) => console.error("Could not fetch DB config:", err));
-  }, []);
+    if (configData) {
+      setConfig({
+        num_sites: configData.num_sites ?? 5,
+        fl_rounds: configData.fl_rounds ?? 10,
+        training_days: configData.training_days ?? configData.sim_days ?? 30,
+        local_epochs: configData.local_epochs ?? 2,
+        seq_length: configData.seq_length ?? 24,
+        learning_rate: configData.learning_rate ?? 0.001,
+        aggregation_alg: configData.aggregation_alg ?? "FedAvg"
+      });
+    }
+  }, [configData]);
+
+  const runRestFallback = (params: {
+    num_sites: number;
+    sim_days: number;
+    fl_rounds: number;
+    local_epochs: number;
+    seq_length: number;
+    learning_rate: number;
+  }) => {
+    let currentRound = 1;
+    setPhase(2);
+    setRound(1);
+
+    const interval = setInterval(() => {
+      currentRound = Math.min(currentRound + 1, params.fl_rounds);
+      setRound(currentRound);
+      if (currentRound % 2 === 0) {
+        setPhase(3);
+      } else {
+        setPhase(4);
+      }
+    }, 1200);
+
+    runPipelineMutation.mutate(
+      {
+        num_sites: params.num_sites,
+        sim_days: params.sim_days,
+        fl_rounds: params.fl_rounds,
+        local_epochs: params.local_epochs,
+        seq_length: params.seq_length,
+        learning_rate: params.learning_rate,
+      },
+      {
+        onSuccess: () => {
+          clearInterval(interval);
+          setRound(params.fl_rounds);
+          setPhase(5);
+          setLoading(false);
+          toast.success("Federated learning pipeline executed successfully via live backend!");
+        },
+        onError: (err: any) => {
+          clearInterval(interval);
+          setLoading(false);
+          toast.error(`Pipeline Execution Error: ${err.message || "Failed to execute pipeline"}`);
+        },
+      }
+    );
+  };
 
   const handleRunSimulation = () => {
     if (loading) return;
@@ -36,56 +93,94 @@ export default function GlobalModelPage() {
     setRound(1);
     setPhase(1);
 
-    const ws = new WebSocket("ws://localhost:8000/api/pipeline-stream");
-
-    ws.onopen = () => {
-      // Send parameters from DB to backend
-      ws.send(JSON.stringify({
-        num_sites: config.num_sites,
-        sim_days: config.training_days || 30,
-        fl_rounds: config.fl_rounds,
-        local_epochs: config.local_epochs,
-        seq_length: config.seq_length,
-        learning_rate: config.learning_rate
-      }));
+    const params = {
+      num_sites: config.num_sites,
+      sim_days: config.training_days || 30,
+      fl_rounds: config.fl_rounds,
+      local_epochs: config.local_epochs,
+      seq_length: config.seq_length,
+      learning_rate: config.learning_rate,
     };
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("WebSocket Update:", data);
+    let wsHandled = false;
+    let ws: WebSocket | null = null;
 
-        if (data.phase === "broadcasting") {
-          setPhase(1);
-        } else if (data.phase === "training") {
-          setPhase(2);
-          setRound(data.round);
-        } else if (data.phase === "uploading") {
-          setPhase(3);
-          setRound(data.round);
-        } else if (data.phase === "aggregating") {
-          setPhase(4);
-          setRound(data.round);
-        } else if (data.phase === "completed") {
-          setPhase(5);
-          setLoading(false);
-          toast.success("Federated learning pipeline executed successfully!");
-          ws.close();
+    try {
+      const wsUrl = `${getWsBaseUrl()}/api/pipeline-stream`;
+      ws = new WebSocket(wsUrl);
+
+      const timeoutId = setTimeout(() => {
+        if (!wsHandled) {
+          wsHandled = true;
+          if (ws) {
+            ws.onopen = null;
+            ws.onmessage = null;
+            ws.onerror = null;
+            ws.onclose = null;
+            try { ws.close(); } catch (_) {}
+          }
+          console.warn("WebSocket timeout, failing over to TanStack Query REST API...");
+          runRestFallback(params);
         }
-      } catch (e) {
-        console.error("Failed to parse websocket message", e);
-      }
-    };
+      }, 2500);
 
-    ws.onerror = (error) => {
-      console.error("WebSocket Error:", error);
-      toast.error("WebSocket Connection Error: Could not connect to FastAPI backend at ws://localhost:8000/api/simulate-stream.");
-      setLoading(false);
-    };
+      ws.onopen = () => {
+        if (wsHandled) return;
+        clearTimeout(timeoutId);
+        wsHandled = true;
+        ws?.send(JSON.stringify(params));
+      };
 
-    ws.onclose = () => {
-      if (loading) setLoading(false);
-    };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.phase === "broadcasting") {
+            setPhase(1);
+          } else if (data.phase === "training") {
+            setPhase(2);
+            setRound(data.round);
+          } else if (data.phase === "uploading") {
+            setPhase(3);
+            setRound(data.round);
+          } else if (data.phase === "aggregating") {
+            setPhase(4);
+            setRound(data.round);
+          } else if (data.phase === "completed") {
+            setPhase(5);
+            setLoading(false);
+            toast.success("Federated learning pipeline executed successfully!");
+            ws?.close();
+          } else if (data.phase === "error") {
+            toast.error(`Pipeline Stream Error: ${data.message}`);
+            setLoading(false);
+          }
+        } catch (e) {
+          console.error("Failed to parse websocket message", e);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.warn("WebSocket error, executing TanStack Query REST API fallback...", error);
+        if (!wsHandled) {
+          wsHandled = true;
+          clearTimeout(timeoutId);
+          try { ws?.close(); } catch (_) {}
+          runRestFallback(params);
+        }
+      };
+
+      ws.onclose = () => {
+        if (!wsHandled) {
+          wsHandled = true;
+          clearTimeout(timeoutId);
+          runRestFallback(params);
+        }
+      };
+    } catch (err) {
+      console.warn("Failed to create WebSocket instance, executing TanStack Query REST fallback...", err);
+      runRestFallback(params);
+    }
   };
 
   const steps = [
